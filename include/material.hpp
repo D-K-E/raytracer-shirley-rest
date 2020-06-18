@@ -1,45 +1,71 @@
 #ifndef MATERIAL_HPP
 #define MATERIAL_HPP
-
 //
-#include <commons.hpp> // done
+#include <commons.hpp>
 //
-#include <pdf.hpp> // done
+#include <hittable.hpp>
 //
-#include <texture.hpp> // done
+#include <texture.hpp>
 //
-#include <string>
-
-struct ScatterRecord {
-  Ray r_out;
-  bool is_specular;
-  color attenuation;
-  shared_ptr<Pdf> pdf_ptr;
-};
-
 class Material {
 public:
-  virtual color emitted(const Ray &r_in, const HitRecord &rec, double u,
-                        double v, const point3 &p) const {
+  const char *mtype = "Material";
+  virtual bool scatter(const Ray &ray_in, const HitRecord &record,
+                       color &attenuation, Ray &ray_out) const = 0;
+  virtual color emitted(double u, double v, const point3 &p) const {
     return color(0);
   }
-  virtual bool scatter(const Ray &r_in, const HitRecord &rec,
-                       ScatterRecord &srec) const {
-    return false;
-  }
-  virtual double scattering_pdf(const Ray &r_in, const HitRecord &rec,
-                                const Ray &scattered) const {
-    return 0;
-  }
-  virtual std::string show_mtype() const { return "material"; }
 };
+
+inline std::ostream &operator<<(std::ostream &out, const Material &m) {
+  return out << " material: " << m.mtype;
+}
+
+class Lambertian : public Material {
+public:
+  shared_ptr<Texture> albedo; // normal renk genelde golgesi alinmistir
+  const char *mtype = "Lambertian";
+
+public:
+  Lambertian(shared_ptr<Texture> a) : albedo(a){};
+  bool scatter(const Ray &ray_in, const HitRecord &record, color &attenuation,
+               Ray &ray_out) const {
+    // isik kirilsin mi kirilmasin mi
+    vec3 out_dir = record.normal + random_unit_vector();
+    ray_out = Ray(record.point, out_dir, ray_in.time());
+    attenuation = albedo->value(record.u, record.v, record.point);
+    return true;
+  }
+};
+class Metal : public Material {
+public:
+  color albedo;     // normal renk genelde golgesi alinmistir
+  double roughness; // yuzey ne kadar puruzlu
+  const char *mtype = "Metal";
+
+public:
+  Metal(const color &alb, double rough) {
+    albedo = alb;
+    roughness = rough;
+  }
+  bool scatter(const Ray &ray_in, const HitRecord &record, color &attenuation,
+               Ray &ray_out) const {
+    // isik kirilsin mi kirilmasin mi
+    vec3 unit_in_dir = to_unit(ray_in.direction);
+    vec3 out_dir = reflect(unit_in_dir, record.normal);
+    ray_out = Ray(record.point, out_dir + roughness * random_in_unit_sphere());
+    attenuation = albedo;
+    return dot(ray_out.direction, record.normal) > 0.0;
+  }
+};
+
 class Dielectric : public Material {
 public:
   double ref_idx;
+  const char *mtype = "Dielectric";
 
-  Dielectric(double r) : ref_idx(r) {}
-  std::string show_mtype() const override { return "Dielectric"; }
-
+public:
+  Dielectric(double ridx) { ref_idx = ridx; }
   double fresnelCT(double costheta, double ridx) const {
     // cook torrence fresnel equation
     double etao = 1 + sqrt(ridx);
@@ -76,104 +102,52 @@ public:
     }
     return fresnel;
   }
-  bool scatter(const Ray &r_in, const HitRecord &rec,
-               ScatterRecord &srec) const override {
-    srec.is_specular = true;
-    srec.pdf_ptr = nullptr;
-    srec.attenuation = color(1.0);
-    double etai_over_etat = (rec.front_face) ? (1.0 / ref_idx) : (ref_idx);
-
-    vec3 unit_direction = unit_vector(r_in.direction());
-    double cos_theta = fmin(dot(-unit_direction, rec.normal), 1.0);
-    double sin_theta = sqrt(1.0 - cos_theta * cos_theta);
-    if (etai_over_etat * sin_theta > 1.0) {
-      vec3 reflected = reflect(unit_direction, rec.normal);
-      srec.r_out = Ray(rec.point, reflected, r_in.time());
+  bool scatter(const Ray &r_in, const HitRecord &record, color &attenuation,
+               Ray &r_out) const {
+    // ray out
+    attenuation = color(1.0);
+    vec3 unit_in_dir = to_unit(r_in.direction);
+    double eta_over = record.front_face ? 1.0 / ref_idx : ref_idx;
+    double costheta = fmin(dot(-1 * unit_in_dir, record.normal), 1.0);
+    double sintheta = sqrt(1.0 - costheta * costheta);
+    vec3 ref;
+    if (eta_over * sintheta > 1.0) {
+      //
+      ref = reflect(unit_in_dir, record.normal);
+      r_out = Ray(record.point, ref);
       return true;
     }
-
-    double reflect_prob = get_fresnel(cos_theta, etai_over_etat);
-    if (random_double() < reflect_prob) {
-      vec3 reflected = reflect(unit_direction, rec.normal);
-      srec.r_out = Ray(rec.point, reflected, r_in.time());
+    //
+    double fresnel_term = get_fresnel(costheta, eta_over);
+    if (random_double() < fresnel_term) {
+      ref = reflect(unit_in_dir, record.normal);
+      r_out = Ray(record.point, ref);
       return true;
     }
-
-    vec3 refracted = refract(unit_direction, rec.normal, etai_over_etat);
-    srec.r_out = Ray(rec.point, refracted, r_in.time());
+    ref = refract(unit_in_dir, record.normal, eta_over);
+    r_out = Ray(record.point, ref);
     return true;
   }
 };
+
 class DiffuseLight : public Material {
 public:
   shared_ptr<Texture> emit;
-
-  std::string show_mtype() const override { return "DiffuseLight"; }
-  DiffuseLight(shared_ptr<Texture> a) : emit(a) {}
-  color emitted(const Ray &r_in, const HitRecord &rec, double u, double v,
-                const point3 &p) const override {
-    if (!rec.front_face) {
-      return color(0);
-    }
-    return emit->value(u, v, p);
+  const char *mtype = "DiffuseLight";
+  //
+public:
+  DiffuseLight(shared_ptr<Texture> t) : emit(t) {}
+  virtual bool scatter(const Ray &ray_in, const HitRecord &record,
+                       color &attenuation, Ray &ray_out) const {
+    //
+    // std::cerr << "scatter color: " << std::endl;
+    return false;
   }
-};
-class Isotropic : public Material {
-public:
-  Isotropic(shared_ptr<Texture> a) : albedo(a) {}
-
-  std::string show_mtype() const override { return "Isotropic"; }
-  bool scatter(const Ray &r_in, const HitRecord &rec,
-               ScatterRecord &srec) const override {
-    srec.r_out = Ray(rec.point, random_in_unit_sphere(), r_in.time());
-    srec.attenuation = albedo->value(rec.u, rec.v, rec.point);
-    return true;
+  virtual color emitted(double u, double v, const point3 &p) const {
+    //
+    color emitColor = emit->value(u, v, p);
+    return emitColor;
   }
-
-public:
-  shared_ptr<Texture> albedo;
-};
-class Lambertian : public Material {
-public:
-  Lambertian(shared_ptr<Texture> a) : albedo(a) {}
-
-  std::string show_mtype() const override { return "Lambertian"; }
-  bool scatter(const Ray &r_in, const HitRecord &rec,
-               ScatterRecord &srec) const override {
-    srec.is_specular = false;
-    srec.attenuation = albedo->value(rec.u, rec.v, rec.point);
-    srec.pdf_ptr = make_shared<CosinePdf>(rec.normal);
-    return true;
-  }
-
-  double scattering_pdf(const Ray &r_in, const HitRecord &rec,
-                        const Ray &scattered) const override {
-    double cosine = dot(rec.normal, to_unit(scattered.direction()));
-    return (cosine <= 0) ? 0 : cosine / PI;
-  }
-
-public:
-  shared_ptr<Texture> albedo;
-};
-class Metal : public Material {
-public:
-  Metal(const color &a, double f) : albedo(a), roughness(f < 1 ? f : 1) {}
-  std::string show_mtype() const override { return "Metal"; }
-
-  bool scatter(const Ray &r_in, const HitRecord &rec,
-               ScatterRecord &srec) const override {
-    vec3 reflected = reflect(unit_vector(r_in.direction()), rec.normal);
-    srec.r_out = Ray(rec.point, reflected + roughness * random_in_unit_sphere(),
-                     r_in.time());
-    srec.attenuation = albedo;
-    srec.is_specular = true;
-    srec.pdf_ptr = nullptr;
-    return true;
-  }
-
-public:
-  color albedo;
-  double roughness;
 };
 
 #endif

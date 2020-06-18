@@ -3,6 +3,7 @@
 //
 #include <commons.hpp>
 //
+
 class Perlin {
 public:
   Perlin() {
@@ -110,4 +111,5 @@ private:
     return a;
   }
 };
+
 #endif

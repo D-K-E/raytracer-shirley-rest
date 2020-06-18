@@ -1,104 +1,95 @@
 #ifndef TEXTURE_HPP
 #define TEXTURE_HPP
-//
 #include <commons.hpp>
-#include <image.hpp>
 #include <perlin.hpp>
 //
-// ------------ texture utils ---------------------------
+#include <image.hpp>
+//
+// ------------ texture utils ----------------------
 
-/*
 void get_sphere_uv(const vec3 &outNormal, double &u, double &v) {
   // http://www.cse.msu.edu/~cse872/tutorial4.html
-  //    The interesting problem for the sphere is to determine the texture
-  //    coordinates
-  //    for each vertex.  One way to look at this problem is to use the surface
-  //    normal
-  //    as way to tell where we are on the face of the sphere.  If we consider
-  //    this a
-  //    vector from the inside of the sphere, we can easily compute the latitude
-  //    and
-  //    longitude on the surface of the globe.  These values correspond to point
-  //    on the
-  //    map.
+  /*
+The interesting problem for the sphere is to determine the texture coordinates
+for each vertex.  One way to look at this problem is to use the surface normal
+as way to tell where we are on the face of the sphere.  If we consider this a
+vector from the inside of the sphere, we can easily compute the latitude and
+longitude on the surface of the globe.  These values correspond to point on the
+map.
 
-  //    Right after the call to glBegin(GL_TRIANGLES), add the following code:
+Right after the call to glBegin(GL_TRIANGLES), add the following code:
 
-  //      // What's the texture coordinate for this normal?
-  //      tx1 = atan2(a[0], a[2]) / (2. * GR_PI) + 0.5;
-  //      ty1 = asin(a[1]) / GR_PI + .5;
+  // What's the texture coordinate for this normal?
+  tx1 = atan2(a[0], a[2]) / (2. * GR_PI) + 0.5;
+  ty1 = asin(a[1]) / GR_PI + .5;
 
-  //      glTexCoord2f(tx1, ty1);
+  glTexCoord2f(tx1, ty1);
 
-  //    So, what does this do?  a[0] and a[2] are the X and Z values of the
-  //    normal.  If
-  //    you look straight down onto the globe from the top, the vector made up
-  //    of the X
-  //    and Z values will tell you the longitude on the globe!  I use atan2 to
-  //    convert
-  //    that to an angle in radians.  This angle is between -PI and PI.  I
-  //    divide by
-  //    2PI, so it's now between -.5 and .5.  Adding 0.5 makes it range from 0
-  //    to 1.
-  //    This is the X value in the texture map.
-  //    double phi = atan2(outNormal.x, outNormal.z);
-  //    double theta = asin(outNormal.y);
-  //    u = 0.5 + (phi / 2 * PI);
-  //    v = 0.5 + (theta / PI);
+So, what does this do?  a[0] and a[2] are the X and Z values of the normal.  If
+you look straight down onto the globe from the top, the vector made up of the X
+and Z values will tell you the longitude on the globe!  I use atan2 to convert
+that to an angle in radians.  This angle is between -PI and PI.  I divide by
+2PI, so it's now between -.5 and .5.  Adding 0.5 makes it range from 0 to 1.
+This is the X value in the texture map.
+   */
+  /*
+double phi = atan2(outNormal.x, outNormal.z);
+double theta = asin(outNormal.y);
+u = 0.5 + (phi / 2 * PI);
+v = 0.5 + (theta / PI);
+*/
   auto phi = atan2(outNormal.z, outNormal.x);
   auto theta = asin(outNormal.y);
   u = 1 - (phi + PI) / (2 * PI);
   v = (theta + PI / 2) / PI;
 }
-*/
 
-// ------------------------------------------------------
+// -------------------------------------------------
+
 class Texture {
 public:
-  virtual color value(double u, double v, const vec3 &p) const = 0;
+  virtual color value(double u, double v, const point3 &p) const = 0;
 };
+
 class SolidColor : public Texture {
+public:
+  color color_value;
+
 public:
   SolidColor() {}
   SolidColor(color c) : color_value(c) {}
-
   SolidColor(double red, double green, double blue)
-      : SolidColor(color(red, green, blue)) {}
-
-  color value(double u, double v, const vec3 &p) const override {
+      : color_value(color(red, green, blue)) {}
+  virtual color value(double u, double v, const point3 &p) const {
+    // std::cerr << "solid color: " << color_value << std::endl;
     return color_value;
   }
-
-private:
-  color color_value;
 };
 class CheckerTexture : public Texture {
-public:
-  CheckerTexture() {}
-  CheckerTexture(shared_ptr<Texture> t0, shared_ptr<Texture> t1)
-      : even(t0), odd(t1) {}
-
-  color value(double u, double v, const vec3 &p) const override {
-    auto sines = sin(10 * p.x) * sin(10 * p.y) * sin(10 * p.z);
-    if (sines < 0)
-      return odd->value(u, v, p);
-    else
-      return even->value(u, v, p);
-  }
-
-public:
+private:
   shared_ptr<Texture> odd;
   shared_ptr<Texture> even;
+
+public:
+  CheckerTexture() {}
+  CheckerTexture(shared_ptr<Texture> t1, shared_ptr<Texture> t2)
+      : odd(t1), even(t2) {}
+  virtual color value(double u, double v, const point3 &p) const {
+    double sines = sin(10 * p.x) * sin(10 * p.y) * sin(10 * p.z);
+    if (sines < 0) {
+      return odd->value(u, v, p);
+    } else {
+      return even->value(u, v, p);
+    }
+  }
 };
 class NoiseTexture : public Texture {
 public:
   NoiseTexture() {}
   NoiseTexture(double sc) : scale(sc) {}
-
-  color value(double u, double v, const vec3 &p) const override {
-    // return color(1,1,1)*0.5*(1 + noise.turb(scale * p));
-    // return color(1,1,1)*noise.turb(scale * p);
-    return color(0.5) * (1 + sin(scale * p.z + 10 * noise.turb(p)));
+  virtual color value(double u, double v, const point3 &p) const {
+    auto tmp = 1.0 + sin(scale * p.z + 10 * noise.turb(p));
+    return color(1) * 0.5 * tmp;
   }
 
 public:
@@ -137,8 +128,7 @@ public:
     width = img.w();
     height = img.h();
   }
-  ~ImageTexture() { img.clear(); }
-  color value(double u, double v, const vec3 &p) const override {
+  virtual color value(double u, double v, const vec3 &p) const {
     //
     if (img.w() == 0 && img.h() == 0) {
       // image not loaded is returned as cyan for debugging

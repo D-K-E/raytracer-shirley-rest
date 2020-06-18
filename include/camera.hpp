@@ -1,55 +1,105 @@
+// Author: Kaan Eraslan
 // includes
 #ifndef CAMERA_HPP
 #define CAMERA_HPP
+#include <vec3.hpp>
 
-#include <commons.hpp>
+class RayCamera {
+  // isin atan kamera/goz nesnesi
+protected:
+  point3 origin;
+  vec3 horizontal;
+  vec3 vertical;
+  point3 lower_left_corner;
 
-class Camera {
 public:
-  Camera() : Camera(point3(0, 0, -1), point3(0), vec3(0, 1, 0), 40, 1, 0, 10) {}
+  RayCamera() {
+    // constructor
+    lower_left_corner = vec3(-2, -1, -1);
+    origin = vec3(0, 0, 0);
+    vertical = vec3(0, 2, 0);
+    horizontal = vec3(4, 0, 0);
+  }
+  RayCamera(vec3 pos, vec3 target, vec3 up, double vfov, double aspect_ratio) {
+    origin = pos;
+    double theta = degree_to_radian(vfov);
+    double half_height = tan(theta / 2);
+    double half_width = aspect_ratio * half_height;
 
-  Camera(point3 orig, point3 target, vec3 vup,
-         double vfov, // vertical field-of-view in degrees
-         double aspect_ratio, double aperture, double focus_dist, double t0 = 0,
-         double t1 = 0) {
-    origin = orig;
+    // w, v, u eksenleri
+    vec3 w = to_unit(pos - target);
+    vec3 u = to_unit(cross(up, w));
+    vec3 v = cross(w, u);
+
+    lower_left_corner = origin - half_width * u - half_height * v - w;
+    horizontal = 2 * half_width * u;
+    vertical = 2 * half_height * v;
+  }
+  Ray get_ray(double u, double v) const {
+    // get camera ray
+    return Ray(origin,
+               lower_left_corner + u * horizontal + v * vertical - origin);
+  }
+};
+
+class RayCameraLens : public RayCamera {
+public:
+  vec3 u, v, w;
+  double lens_radius;
+
+public:
+  RayCameraLens() {}
+  RayCameraLens(vec3 pos, vec3 target, vec3 up, double vfov,
+                double aspect_ratio, double aperture, double focus_dist) {
+    // camera lens constructor
+    origin = pos;
     lens_radius = aperture / 2;
-    time0 = t0;
-    time1 = t1;
+    double theta = degree_to_radian(vfov);
+    double half_height = tan(theta / 2);
+    double half_width = aspect_ratio * half_height;
 
-    auto theta = degree_to_radian(vfov);
-    auto half_height = tan(theta / 2);
-    auto half_width = aspect_ratio * half_height;
-
-    w = unit_vector(orig - target);
-    u = unit_vector(cross(vup, w));
+    // w, v, u eksenleri
+    w = to_unit(pos - target);
+    u = to_unit(cross(up, w));
     v = cross(w, u);
-
     lower_left_corner = origin - half_width * focus_dist * u -
-                        half_height * focus_dist * v - focus_dist * w;
-
+                        half_height * focus_dist * v - w * focus_dist;
     horizontal = 2 * half_width * focus_dist * u;
     vertical = 2 * half_height * focus_dist * v;
   }
-
-  Ray get_ray(double s, double t) const {
+  Ray get_ray(double t, double s) const {
+    // get camera ray
     vec3 rd = lens_radius * random_in_unit_disk();
     vec3 offset = u * rd.x + v * rd.y;
-    vec3 orig_offset = origin + offset;
-    vec3 orig_off = origin - offset;
-    return Ray(orig_offset,
-               lower_left_corner + s * horizontal + t * vertical - orig_off,
-               random_double(time0, time1));
+    return Ray(origin + offset, lower_left_corner + t * horizontal +
+                                    s * vertical - origin - offset);
   }
+};
 
+class TimeRayCamera : public RayCameraLens {
+  /* Sonraki hafta */
 private:
-  point3 origin;
-  point3 lower_left_corner;
-  vec3 horizontal;
-  vec3 vertical;
-  vec3 u, v, w;
-  double lens_radius;
-  double time0, time1; // shutter open/close times
+  double time1, time2;
+
+public:
+  TimeRayCamera() {}
+  TimeRayCamera(vec3 pos, vec3 target, vec3 up, double vfov,
+                double aspect_ratio, double aperture, double focus_dist,
+                double t1 = 0.0, double t2 = 0.0)
+      : RayCameraLens(pos, target, up, vfov, aspect_ratio, aperture,
+                      focus_dist) {
+    //
+    time1 = t1;
+    time2 = t2;
+  }
+  Ray get_ray(double t, double s) const {
+    // get camera ray
+    vec3 rd = lens_radius * random_in_unit_disk();
+    vec3 offset = u * rd.x + v * rd.y;
+    return Ray(origin + offset, lower_left_corner + t * horizontal +
+                                    s * vertical - origin - offset,
+               random_double(time1, time2));
+  }
 };
 
 #endif

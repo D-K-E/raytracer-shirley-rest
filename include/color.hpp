@@ -18,14 +18,16 @@ void write_color(std::ostream &out, color pcolor) {
       << cast_color(pcolor.z) << std::endl;
 }
 void write_color(std::ostream &out, color pcolor, int samples_per_pixel) {
-  // replace nans with zero since no nans are equal to each other
-  pcolor.x = (pcolor.x != pcolor.x) ? 0.0 : pcolor.x;
-  pcolor.y = (pcolor.y != pcolor.y) ? 0.0 : pcolor.y;
-  pcolor.z = (pcolor.z != pcolor.z) ? 0.0 : pcolor.z;
+  double r, g, b;
+  r = pcolor.x;
+  g = pcolor.y;
+  b = pcolor.z;
   // scale sample
-  pcolor /= samples_per_pixel;
-  out << cast_color(pcolor.x, true) << ' ' << cast_color(pcolor.y, true) << ' '
-      << cast_color(pcolor.z, true) << std::endl;
+  r = sqrt(r * 1.0 / samples_per_pixel);
+  g = sqrt(g * 1.0 / samples_per_pixel);
+  b = sqrt(b * 1.0 / samples_per_pixel);
+  out << cast_color(r, true) << ' ' << cast_color(g, true) << ' '
+      << cast_color(b, true) << std::endl;
 }
 
 #endif
