@@ -1,6 +1,7 @@
 #ifndef MATERIAL_HPP
 #define MATERIAL_HPP
 //
+#include "vec3.hpp"
 #include <commons.hpp>
 //
 #include <hittable.hpp>
@@ -11,9 +12,15 @@ class Material {
 public:
   const char *mtype = "Material";
   virtual bool scatter(const Ray &ray_in, const HitRecord &record,
-                       color &attenuation, Ray &ray_out) const = 0;
+                       color &attenuation, double &pdf, Ray &ray_out) const {
+    return false;
+  };
   virtual color emitted(double u, double v, const point3 &p) const {
     return color(0);
+  }
+  virtual double scattering_pdf(const Ray &ray_in, const HitRecord &record,
+                                const Ray &ray_out) const {
+    return 0;
   }
 };
 
@@ -29,12 +36,19 @@ public:
 public:
   Lambertian(shared_ptr<Texture> a) : albedo(a){};
   bool scatter(const Ray &ray_in, const HitRecord &record, color &attenuation,
-               Ray &ray_out) const {
+               double &pdf, Ray &ray_out) const override {
     // isik kirilsin mi kirilmasin mi
-    vec3 out_dir = record.normal + random_unit_vector();
-    ray_out = Ray(record.point, out_dir, ray_in.time());
+    vec3 out_dir = random_in_hemisphere(record.normal);
+    ray_out = Ray(record.point, to_unit(out_dir), ray_in.time());
     attenuation = albedo->value(record.u, record.v, record.point);
+    pdf = 0.5 / PI;
     return true;
+  }
+  double scattering_pdf(const Ray &ray_in, const HitRecord &record,
+                        const Ray &ray_out) const override {
+    vec3 r_dir = to_unit(ray_out.dir());
+    double costheta = dot(record.normal, r_dir);
+    return (costheta < 0) ? 0 : (costheta / PI);
   }
 };
 class Metal : public Material {

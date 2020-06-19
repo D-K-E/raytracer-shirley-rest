@@ -35,12 +35,16 @@ color ray_color(const Ray &r, const color &background,
   color atten;
   color emittedColor =
       record.mat_ptr->emitted(record.u, record.v, record.point);
-  if (!record.mat_ptr->scatter(r, record, atten, r_out)) {
+  double pdf_val;
+  if (!record.mat_ptr->scatter(r, record, atten, pdf_val, r_out)) {
     return emittedColor;
   }
+  double s_pdf = record.mat_ptr->scattering_pdf(r, record, r_out);
   // bidirectional surface scattering distribution function
   // rendering equation = L^e + L^r
-  return emittedColor + atten * ray_color(r_out, background, scene, depth - 1);
+  return emittedColor +
+         (atten * ray_color(r_out, background, scene, depth - 1) *
+          (s_pdf / pdf_val));
 }
 
 HittableList cornell_box() {
