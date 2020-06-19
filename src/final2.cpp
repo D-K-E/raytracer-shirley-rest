@@ -50,7 +50,7 @@ color ray_color(const Ray &r, const color &background,
   // trying to cosine pdf
   vec3 generated_dir = pdf.generate();
   r_out = Ray(record.point, generated_dir, r.time());
-  pdf_val = pdf.value(generated_dir);
+  pdf_val = pdf.value(r_out.dir());
   double s_pdf = record.mat_ptr->scattering_pdf(r, record, r_out);
 
   // bidirectional surface scattering distribution function
