@@ -130,11 +130,11 @@ public:
     }
     return fresnel;
   }
-  bool scatter(const Ray &r_in, const HitRecord &record, color &attenuation,
-               Ray &r_out) const {
+  bool scatter(const Ray &r_in, const HitRecord &record,
+               ScatterRecord &srec) const {
     // ray out
-    attenuation = color(1.0);
-    vec3 unit_in_dir = to_unit(r_in.direction);
+    srec.attenuation = color(1.0);
+    vec3 unit_in_dir = to_unit(r_in.dir());
     double eta_over = record.front_face ? 1.0 / ref_idx : ref_idx;
     double costheta = fmin(dot(-1 * unit_in_dir, record.normal), 1.0);
     double sintheta = sqrt(1.0 - costheta * costheta);
@@ -142,18 +142,21 @@ public:
     if (eta_over * sintheta > 1.0) {
       //
       ref = reflect(unit_in_dir, record.normal);
-      r_out = Ray(record.point, ref);
+      srec.r_out = Ray(record.point, ref);
+      srec.is_specular = true;
       return true;
     }
     //
     double fresnel_term = get_fresnel(costheta, eta_over);
     if (random_double() < fresnel_term) {
       ref = reflect(unit_in_dir, record.normal);
-      r_out = Ray(record.point, ref);
+      srec.r_out = Ray(record.point, ref);
+      srec.is_specular = true;
       return true;
     }
     ref = refract(unit_in_dir, record.normal, eta_over);
-    r_out = Ray(record.point, ref);
+    srec.r_out = Ray(record.point, ref);
+    srec.is_specular = true;
     return true;
   }
 };

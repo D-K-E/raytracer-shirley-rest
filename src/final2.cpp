@@ -90,16 +90,16 @@ HittableList cornell_box() {
   shared_ptr<Material> aluminum =
       make_shared<Metal>(color(0.8, 0.85, 0.88), 0.0);
   shared_ptr<Hittable> box1 =
-      make_shared<Box>(point3(0, 0, 0), point3(165, 330, 165), aluminum);
+      make_shared<Box>(point3(0, 0, 0), point3(165, 330, 165), white);
   box1 = make_shared<RotateY>(box1, 15);
   box1 = make_shared<Translate>(box1, vec3(265, 0, 295));
   scene.add(box1);
 
-  shared_ptr<Hittable> box2 =
-      make_shared<Box>(point3(0, 0, 0), point3(165, 165, 165), white);
-  box2 = make_shared<RotateY>(box2, -18);
-  box2 = make_shared<Translate>(box2, vec3(130, 0, 65));
-  scene.add(box2);
+  shared_ptr<Material> glass = make_shared<Dielectric>(1.5);
+  shared_ptr<Hittable> glass_sphere =
+      make_shared<Sphere>(point3(190, 90, 190), 90, glass);
+
+  scene.add(glass_sphere);
 
   // add other objects etc
 
