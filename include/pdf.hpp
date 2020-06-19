@@ -45,7 +45,6 @@ public:
   shared_ptr<Hittable> ptr;
 };
 
-/*
 class MixturePdf : public Pdf {
 public:
   MixturePdf(shared_ptr<Pdf> p0, shared_ptr<Pdf> p1) {
@@ -67,5 +66,4 @@ public:
 public:
   shared_ptr<Pdf> p[2];
 };
-*/
 #endif
