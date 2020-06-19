@@ -16,8 +16,8 @@ public:
   HittableList(shared_ptr<Hittable> object) { add(object); }
   void add(shared_ptr<Hittable> object) { objects.push_back(object); }
   void clear() { objects.clear(); }
-  bool hit(const Ray &r, double dist_min, double dist_max,
-           HitRecord &record) const override {
+  virtual bool hit(const Ray &r, double dist_min, double dist_max,
+                   HitRecord &record) const {
     // isin herhangi bir objeye vurdu mu vurmadi mi onu kontrol eden
     // fonksiyon
     HitRecord temp;
@@ -33,43 +33,22 @@ public:
     }
     return hit_;
   }
-  bool bounding_box(double t0, double t1, Aabb &output_box) const override {
-    if (objects.empty())
+  virtual bool bounding_box(double t1, double t2, Aabb &output_box) const {
+    //
+    if (objects.empty()) {
       return false;
-
+    }
+    bool fbox = true;
     Aabb temp_box;
-    bool first_true = objects[0]->bounding_box(t0, t1, temp_box);
-
-    if (!first_true)
-      return false;
-
-    output_box = temp_box;
-
-    for (const auto &object : objects) {
-      if (!object->bounding_box(t0, t1, temp_box)) {
+    for (const shared_ptr<Hittable> object : objects) {
+      if (object->bounding_box(t1, t2, temp_box) == false) {
         return false;
       }
-      output_box = surrounding_box(output_box, temp_box);
+      output_box = fbox ? temp_box : surrounding_box(output_box, temp_box);
+      fbox = false;
     }
-
     return true;
   }
-
-  double pdf_value(const point3 &o, const vec3 &v) const override {
-    auto weight = 1.0 / objects.size();
-    double sum = 0.0;
-
-    for (const auto &object : objects) {
-      sum += weight * object->pdf_value(o, v);
-    }
-
-    return sum;
-  }
-  vec3 random(const vec3 &o) const override {
-    auto int_size = static_cast<int>(objects.size());
-    return objects[random_int(0, int_size - 1)]->random(o);
-  }
-  //
 };
 
 #endif

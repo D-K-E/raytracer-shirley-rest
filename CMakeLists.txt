@@ -34,10 +34,10 @@ set ( ALL_LIBS
     )
 
 
-add_executable(final.out "src/final.cpp")
-target_link_libraries(final.out ${ALL_LIBS})
-install(TARGETS final.out DESTINATION "${PROJECT_SOURCE_DIR}/bin/")
+#add_executable(final.out "src/final.cpp")
+#target_link_libraries(final.out ${ALL_LIBS})
+#install(TARGETS final.out DESTINATION "${PROJECT_SOURCE_DIR}/bin/")
 
-#add_executable(nosampling.out "src/cornell.cpp")
-#target_link_libraries(nosampling.out ${ALL_LIBS})
-#install(TARGETS nosampling.out DESTINATION "${PROJECT_SOURCE_DIR}/bin/")
+add_executable(nosampling.out "src/cornell.cpp")
+target_link_libraries(nosampling.out ${ALL_LIBS})
+install(TARGETS nosampling.out DESTINATION "${PROJECT_SOURCE_DIR}/bin/")
