@@ -73,14 +73,17 @@ public:
     albedo = alb;
     roughness = rough;
   }
-  bool scatter(const Ray &ray_in, const HitRecord &record, color &attenuation,
-               Ray &ray_out) const {
+  bool scatter(const Ray &ray_in, const HitRecord &record,
+               ScatterRecord &srec) const override {
     // isik kirilsin mi kirilmasin mi
     vec3 unit_in_dir = to_unit(ray_in.direction);
     vec3 out_dir = reflect(unit_in_dir, record.normal);
-    ray_out = Ray(record.point, out_dir + roughness * random_in_unit_sphere());
-    attenuation = albedo;
-    return dot(ray_out.direction, record.normal) > 0.0;
+    srec.is_specular = true;
+    srec.r_out =
+        Ray(record.point, out_dir + roughness * random_in_unit_sphere());
+    srec.attenuation = albedo;
+    srec.pdf_ptr = nullptr;
+    return true;
   }
 };
 

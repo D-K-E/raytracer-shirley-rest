@@ -38,6 +38,10 @@ color ray_color(const Ray &r, const color &background,
   if (!record.mat_ptr->scatter(r, record, srec)) {
     return emittedColor;
   }
+  if (srec.is_specular) {
+    return srec.attenuation *
+           ray_color(srec.r_out, background, scene, depth - 1);
+  }
 
   // trying mixed pdf
 
@@ -84,8 +88,10 @@ HittableList cornell_box() {
       make_shared<FlipFace>(make_shared<XYRect>(0, 555, 0, 555, 555, white)));
 
   // --------- make boxes --------------
+  shared_ptr<Material> aluminum =
+      make_shared<Metal>(color(0.8, 0.85, 0.88), 0.0);
   shared_ptr<Hittable> box1 =
-      make_shared<Box>(point3(0, 0, 0), point3(165, 330, 165), white);
+      make_shared<Box>(point3(0, 0, 0), point3(165, 330, 165), aluminum);
   box1 = make_shared<RotateY>(box1, 15);
   box1 = make_shared<Translate>(box1, vec3(265, 0, 295));
   scene.add(box1);
