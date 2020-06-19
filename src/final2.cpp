@@ -43,9 +43,9 @@ color ray_color(const Ray &r, const color &background,
   // light sampling
 
   auto on_light = point3(random_double(213, 343), 554, random_double(227, 332));
-  auto to_light = on_light - record.point;
-  auto distance_squared = length_squared(to_light);
-  to_light = unit_vector(to_light);
+  auto to_light_dir = on_light - record.point;
+  auto distance_squared = length_squared(to_light_dir);
+  auto to_light = unit_vector(to_light_dir);
 
   if (dot(to_light, record.normal) < 0)
     return emittedColor;
@@ -143,10 +143,10 @@ void innerLoop(InnerParams params) {
 
 int main(void) {
   // resmin yazma fonksiyonu
-  double aspect_ratio = 16.0 / 9.0;
+  double aspect_ratio = 1;
   const int imwidth = 320;
   const int imheight = static_cast<int>(imwidth / aspect_ratio);
-  int psample = 100;
+  int psample = 10;
   int mdepth = 50;
 
   // ppm için gerekli olanlar
