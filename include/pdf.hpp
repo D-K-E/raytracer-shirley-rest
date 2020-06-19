@@ -1,6 +1,7 @@
 #ifndef PDF_HPP
 #define PDF_HPP
 //
+#include "vec3.hpp"
 #include <commons.hpp>
 #include <onb.hpp>
 //
@@ -18,7 +19,7 @@ public:
   CosinePdf(const vec3 &w) { uvw.build_from_w(w); }
 
   double value(const vec3 &direction) const override {
-    auto cosine = dot(unit_vector(direction), uvw.w());
+    auto cosine = dot(to_unit(direction), uvw.w());
     return (cosine <= 0) ? 0 : cosine / PI;
   }
 
@@ -57,10 +58,11 @@ public:
   }
 
   vec3 generate() const override {
-    if (random_double() < 0.5)
+    if (random_double() < 0.5) {
       return p[0]->generate();
-    else
+    } else {
       return p[1]->generate();
+    }
   }
 
 public:
