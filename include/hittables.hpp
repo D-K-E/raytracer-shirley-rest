@@ -17,7 +17,7 @@ public:
   void add(shared_ptr<Hittable> object) { objects.push_back(object); }
   void clear() { objects.clear(); }
   virtual bool hit(const Ray &r, double dist_min, double dist_max,
-                   HitRecord &record) const {
+                   HitRecord &record) const override {
     // isin herhangi bir objeye vurdu mu vurmadi mi onu kontrol eden
     // fonksiyon
     HitRecord temp;
@@ -33,7 +33,8 @@ public:
     }
     return hit_;
   }
-  virtual bool bounding_box(double t1, double t2, Aabb &output_box) const {
+  virtual bool bounding_box(double t1, double t2,
+                            Aabb &output_box) const override {
     //
     if (objects.empty()) {
       return false;
@@ -48,6 +49,19 @@ public:
       fbox = false;
     }
     return true;
+  }
+  double pdf_value(const point3 &o, const vec3 &v) const override {
+    auto weight = 1.0 / objects.size();
+    auto sum = 0.0;
+
+    for (const auto &object : objects)
+      sum += weight * object->pdf_value(o, v);
+
+    return sum;
+  }
+  vec3 random(const vec3 &o) const override {
+    auto int_size = static_cast<int>(objects.size());
+    return objects[random_int(0, int_size - 1)]->random(o);
   }
 };
 

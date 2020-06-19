@@ -18,8 +18,6 @@
 #include <sphere.hpp> // done
 //
 
-color dc = color(0);
-
 color ray_color(const Ray &r, const color &background,
                 const HittableList &scene, shared_ptr<Hittable> lights,
                 int depth) {
@@ -129,17 +127,19 @@ void innerLoop(InnerParams params) {
   HittableList scene = params.scene;
   color background(0);
   //
-  shared_ptr<Hittable> light_shape =
-      make_shared<XZRect>(213, 343, 227, 332, 554, shared_ptr<Material>());
-  shared_ptr<Hittable> glass_sphere =
-      make_shared<Sphere>(point3(190, 90, 190), 90, shared_ptr<Material>());
+
+  shared_ptr<HittableList> lights = make_shared<HittableList>();
+  lights->add(
+      make_shared<XZRect>(213, 343, 227, 332, 554, shared_ptr<Material>()));
+  lights->add(
+      make_shared<Sphere>(point3(190, 90, 190), 90, shared_ptr<Material>()));
 
   color rcolor(0.0, 0.0, 0.0);
   for (int k = 0; k < psample; k++) {
     double t = double(i + random_double()) / (imwidth - 1);
     double s = double(j + random_double()) / (imheight - 1);
     Ray r = camera.get_ray(t, s);
-    rcolor += ray_color(r, background, scene, glass_sphere, mdepth);
+    rcolor += ray_color(r, background, scene, lights, mdepth);
   }
   write_color(std::cout, rcolor, psample);
 }
