@@ -7,49 +7,19 @@
 //
 #include <texture.hpp>
 //
-#include <pdf.hpp>
-//
-struct ScatterRecord {
-  Ray r_out;
-  bool is_specular;
-  color attenuation;
-  shared_ptr<Pdf> pdf_ptr;
-};
-
-//
 class Material {
 public:
-  const char *mtype;
-  virtual bool scatter(const Ray &ray_in, const HitRecord &rec,
-                       ScatterRecord &srec) const = 0;
-  virtual color emitted(const Ray &r_in, const HitRecord &rec, double u,
-                        double v, const point3 &p) const {
+  const char *mtype = "Material";
+  virtual bool scatter(const Ray &ray_in, const HitRecord &record,
+                       color &attenuation, Ray &ray_out) const = 0;
+  virtual color emitted(double u, double v, const point3 &p) const {
     return color(0);
-  }
-  virtual double scattering_pdf(const Ray &r_in, const HitRecord &rec,
-                                const Ray &r_out) const {
-    return 0;
   }
 };
 
 inline std::ostream &operator<<(std::ostream &out, const Material &m) {
   return out << " material: " << m.mtype;
 }
-class Isotropic : public Material {
-public:
-  Isotropic(shared_ptr<Texture> a) : albedo(a) {}
-
-  bool scatter(const Ray &r_in, const HitRecord &rec,
-               ScatterRecord &srec) const override {
-    srec.r_out = Ray(rec.point, random_in_unit_sphere(), r_in.time());
-    srec.attenuation = albedo->value(rec.u, rec.v, rec.point);
-    return true;
-  }
-
-public:
-  shared_ptr<Texture> albedo;
-  const char *mtype = "Isotropic";
-};
 
 class Lambertian : public Material {
 public:
@@ -58,19 +28,13 @@ public:
 
 public:
   Lambertian(shared_ptr<Texture> a) : albedo(a){};
-  bool scatter(const Ray &ray_in, const HitRecord &record,
-               ScatterRecord &srec) const override {
+  bool scatter(const Ray &ray_in, const HitRecord &record, color &attenuation,
+               Ray &ray_out) const {
     // isik kirilsin mi kirilmasin mi
-    srec.is_specular = false;
-    srec.pdf_ptr = make_shared<CosinePdf>(record.normal);
-    srec.attenuation = albedo->value(record.u, record.v, record.point);
+    vec3 out_dir = record.normal + random_unit_vector();
+    ray_out = Ray(record.point, out_dir, ray_in.time());
+    attenuation = albedo->value(record.u, record.v, record.point);
     return true;
-  }
-  double scattering_pdf(const Ray &r_in, const HitRecord &rec,
-                        const Ray &r_out) const override {
-    //
-    auto costheta = dot(rec.normal, to_unit(r_out.dir()));
-    return costheta < 0 ? 0 : costheta / PI;
   }
 };
 class Metal : public Material {
@@ -84,17 +48,14 @@ public:
     albedo = alb;
     roughness = rough;
   }
-  bool scatter(const Ray &r_in, const HitRecord &record,
-               ScatterRecord &srec) const override {
+  bool scatter(const Ray &ray_in, const HitRecord &record, color &attenuation,
+               Ray &ray_out) const {
     // isik kirilsin mi kirilmasin mi
-    vec3 unit_in_dir = to_unit(r_in.dir());
+    vec3 unit_in_dir = to_unit(ray_in.direction);
     vec3 out_dir = reflect(unit_in_dir, record.normal);
-    vec3 r_dir = out_dir + roughness * random_in_unit_sphere();
-    srec.r_out = Ray(record.point, r_dir, r_in.time());
-    srec.attenuation = albedo;
-    srec.is_specular = true;
-    srec.pdf_ptr = nullptr;
-    return true;
+    ray_out = Ray(record.point, out_dir + roughness * random_in_unit_sphere());
+    attenuation = albedo;
+    return dot(ray_out.direction, record.normal) > 0.0;
   }
 };
 
@@ -141,32 +102,30 @@ public:
     }
     return fresnel;
   }
-  bool scatter(const Ray &r_in, const HitRecord &record,
-               ScatterRecord &srec) const override {
-    srec.is_specular = true;
-    srec.pdf_ptr = nullptr;
-    srec.attenuation = color(1.0);
+  bool scatter(const Ray &r_in, const HitRecord &record, color &attenuation,
+               Ray &r_out) const {
     // ray out
+    attenuation = color(1.0);
     vec3 unit_in_dir = to_unit(r_in.direction);
-    double eta_over = record.front_face ? (1.0 / ref_idx) : ref_idx;
+    double eta_over = record.front_face ? 1.0 / ref_idx : ref_idx;
     double costheta = fmin(dot(-1 * unit_in_dir, record.normal), 1.0);
     double sintheta = sqrt(1.0 - costheta * costheta);
     vec3 ref;
     if (eta_over * sintheta > 1.0) {
       //
       ref = reflect(unit_in_dir, record.normal);
-      srec.r_out = Ray(record.point, ref);
+      r_out = Ray(record.point, ref);
       return true;
     }
     //
     double fresnel_term = get_fresnel(costheta, eta_over);
     if (random_double() < fresnel_term) {
       ref = reflect(unit_in_dir, record.normal);
-      srec.r_out = Ray(record.point, ref);
+      r_out = Ray(record.point, ref);
       return true;
     }
     ref = refract(unit_in_dir, record.normal, eta_over);
-    srec.r_out = Ray(record.point, ref);
+    r_out = Ray(record.point, ref);
     return true;
   }
 };
@@ -178,18 +137,14 @@ public:
   //
 public:
   DiffuseLight(shared_ptr<Texture> t) : emit(t) {}
-  bool scatter(const Ray &ray_in, const HitRecord &record,
-               ScatterRecord &srec) const override {
+  virtual bool scatter(const Ray &ray_in, const HitRecord &record,
+                       color &attenuation, Ray &ray_out) const {
     //
     // std::cerr << "scatter color: " << std::endl;
     return false;
   }
-  color emitted(const Ray &r_in, const HitRecord &rec, double u, double v,
-                const point3 &p) const override {
+  virtual color emitted(double u, double v, const point3 &p) const {
     //
-    if (rec.front_face == false) {
-      return color(0);
-    }
     color emitColor = emit->value(u, v, p);
     return emitColor;
   }

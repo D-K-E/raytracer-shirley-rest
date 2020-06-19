@@ -42,7 +42,6 @@ public:
         get_sphere_uv(uv_normal, record.u, record.v);
         // get_sphere_uv((record.point - center) / radius, record.u, record.v);
         record.mat_ptr = mat_ptr;
-        record.objtype = "Sphere";
         return true;
       }
       margin = (-1 * half_b + root) / a;
@@ -54,7 +53,6 @@ public:
         vec3 uv_normal = record.front_face ? record.normal : -1 * record.normal;
         get_sphere_uv(uv_normal, record.u, record.v);
         record.mat_ptr = mat_ptr;
-        record.objtype = "Sphere";
         return true;
       }
     }

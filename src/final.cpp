@@ -1,3 +1,14 @@
+//
+//
+#include <commons.hpp> // done
+//
+#include <hittables.hpp> // done
+//
+#include <camera.hpp> // done
+#include <color.hpp>  // done
+//
+#include <box.hpp> // done
+
 //#include <bvh.hpp>      // done
 
 //#include <mediumc.hpp>  // done
@@ -5,18 +16,10 @@
 //
 #include <filesystem>
 #include <iostream>
+#include <sphere.hpp> // done
 //
 
-#include <aarect.hpp>
-#include <box.hpp>
-#include <camera.hpp>
-#include <color.hpp>
-#include <commons.hpp> // done
-#include <hittables.hpp>
-#include <material.hpp>
-#include <sphere.hpp>
-//
-color dc;
+color dc = color(0);
 
 color ray_color(const Ray &r, const color &background, const Hittable &world,
                 shared_ptr<Hittable> lights, int depth) {
@@ -36,29 +39,36 @@ color ray_color(const Ray &r, const color &background, const Hittable &world,
   color emitted = rec.mat_ptr->emitted(r, rec, rec.u, rec.v, rec.point);
 
   if (!rec.mat_ptr->scatter(r, rec, srec)) {
+    dc = emitted;
     return emitted;
   }
 
   if (srec.is_specular) {
-    return srec.attenuation *
-           ray_color(srec.r_out, background, world, lights, depth - 1);
+    color rcolor = color(1);
+    rcolor *= srec.attenuation;
+    rcolor *= ray_color(srec.r_out, background, world, lights, depth - 1);
+    dc = rcolor;
+    return rcolor;
   }
 
   auto light_ptr = make_shared<HittablePdf>(lights, rec.point);
-  MixturePdf pdf(light_ptr, srec.pdf_ptr);
-  auto generated_dir = pdf.generate();
-  Ray scattered = Ray(rec.point, generated_dir, r.time());
-  auto pdf_val = pdf.value(scattered.dir());
-  color res =
-      emitted +
-      (srec.attenuation * rec.mat_ptr->scattering_pdf(r, rec, scattered) *
-       ray_color(scattered, background, world, lights, depth - 1) / pdf_val);
-  dc = res;
+  MixturePdf p(light_ptr, srec.pdf_ptr);
+  Ray scattered = Ray(rec.point, p.generate(), r.time());
+  auto pdf_val = p.value(scattered.direction());
+  color rcolor = color(1);
 
-  return res;
+  //
+  rcolor *= srec.attenuation;
+  rcolor *= rec.mat_ptr->scattering_pdf(r, rec, scattered); // can be 0
+  rcolor *= ray_color(scattered, background, world, lights, depth - 1);
+  rcolor /= pdf_val; // can be 0 as well resulting in nan
+  rcolor += emitted;
+  dc = rcolor;
+
+  return rcolor;
 }
 
-HittableList cornell_box(TimeRayCamera &cam, double aspect) {
+HittableList cornell_box(Camera &cam, double aspect) {
   HittableList world;
 
   auto red = make_shared<Lambertian>(make_shared<SolidColor>(.65, .05, .05));
@@ -95,8 +105,8 @@ HittableList cornell_box(TimeRayCamera &cam, double aspect) {
   auto t0 = 0.0;
   auto t1 = 1.0;
 
-  cam = TimeRayCamera(origin, target, up, vfov, aspect, aperture, dist_to_focus,
-                      t0, t1);
+  cam =
+      Camera(origin, target, up, vfov, aspect, aperture, dist_to_focus, t0, t1);
 
   return world;
 }
@@ -112,14 +122,14 @@ int main() {
 
   color background(0, 0, 0);
 
-  TimeRayCamera cam;
+  Camera cam;
   auto world = cornell_box(cam, aspect_ratio);
-  auto light = make_shared<DiffuseLight>(make_shared<SolidColor>(15, 15, 15));
-  auto glass = make_shared<Dielectric>(1.5);
 
   auto lights = make_shared<HittableList>();
-  lights->add(make_shared<XZRect>(213, 343, 227, 332, 554, light));
-  lights->add(make_shared<Sphere>(point3(190, 90, 190), 90, glass));
+  lights->add(
+      make_shared<XZRect>(213, 343, 227, 332, 554, shared_ptr<Material>()));
+  lights->add(
+      make_shared<Sphere>(point3(190, 90, 190), 90, shared_ptr<Material>()));
 
   for (int j = image_height - 1; j >= 0; --j) {
     std::cerr << "\rScanlines remaining: " << j << ' ' << std::flush;

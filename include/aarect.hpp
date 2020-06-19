@@ -6,9 +6,9 @@
 #include <material.hpp>
 
 struct AxisInfo {
-  unsigned int aligned1;
-  unsigned int aligned2;
-  unsigned int notAligned;
+  double aligned1;
+  double aligned2;
+  double notAligned;
 };
 
 class AaRect : public Hittable {
@@ -21,7 +21,6 @@ protected:
 public:
   double k;
   shared_ptr<Material> mat_ptr;
-  const char *objtype;
 
 public:
   AaRect() {}
@@ -43,7 +42,7 @@ public:
       ax.notAligned = 1;
     }
   }
-  bool hit(const Ray &r, double t0, double t1, HitRecord &rec) const override {
+  virtual bool hit(const Ray &r, double t0, double t1, HitRecord &rec) const {
     /*
        point of intersection satisfies
        both P = O + D*m Point = Origin + Direction * magnitude
@@ -67,11 +66,10 @@ public:
     vec3 outward_normal = axis_normal;
     rec.set_face_normal(r, outward_normal);
     rec.mat_ptr = mat_ptr;
-    rec.objtype = this->objtype;
     rec.point = r.at(t);
     return true;
   }
-  bool bounding_box(double t0, double t1, Aabb &output_box) const override {
+  virtual bool bounding_box(double t0, double t1, Aabb &output_box) const {
     // The bounding box must have non-zero width in each dimension, so pad the Z
     // dimension a small amount.
     point3 p1, p2;
@@ -94,7 +92,6 @@ public:
 class XYRect : public AaRect {
 public:
   double x0, x1, y0, y1;
-  const char *objtype = "xyrect";
 
 public:
   XYRect() {}
@@ -102,15 +99,10 @@ public:
          shared_ptr<Material> mat)
       : AaRect(_x0, _x1, _y0, _y1, _k, mat, vec3(0, 0, 1)), x0(_x0), x1(_x1),
         y0(_y0), y1(_y1) {}
-  bool hit(const Ray &r, double t0, double t1, HitRecord &rec) const override {
-    bool isHit = AaRect::hit(r, t0, t1, rec);
-    return isHit;
-  }
 };
 class XZRect : public AaRect {
 public:
   double x0, x1, z0, z1;
-  const char *objtype = "xzrect";
 
 public:
   XZRect() {}
@@ -118,46 +110,10 @@ public:
          shared_ptr<Material> mat)
       : AaRect(_x0, _x1, _z0, _z1, _k, mat, vec3(0, 1, 0)), x0(_x0), x1(_x1),
         z0(_z0), z1(_z1) {}
-  // new in the rest of your life book
-  double pdf_value(const point3 &origin, const vec3 &v) const override {
-    HitRecord rec;
-    if (!hit(Ray(origin, v), 0.001, INF, rec)) { // or this->hit
-      return 0;
-    }
-
-    auto area = (x1 - x0) * (z1 - z0);
-    auto distance_squared = rec.dist * rec.dist * dot(v, v);
-    auto cosine = fabs(dot(v, rec.normal) / length(v));
-
-    return distance_squared / (cosine * area);
-  }
-
-  vec3 random(const point3 &origin) const override {
-    // choose random points
-    double aligned_random1 = random_double(x0, x1);
-    double aligned_random2 = random_double(z0, z1);
-    point3 random_point;
-    if (ax.notAligned == 0) {
-      // yz rect
-      random_point = point3(k, aligned_random1, aligned_random2);
-    } else if (ax.notAligned == 1) {
-      // xz rect
-      random_point = point3(aligned_random1, k, aligned_random2);
-    } else if (ax.notAligned == 2) {
-      random_point = point3(aligned_random1, aligned_random2, k);
-    }
-
-    return random_point - origin;
-  }
-  bool hit(const Ray &r, double t0, double t1, HitRecord &rec) const override {
-    bool isHit = AaRect::hit(r, t0, t1, rec);
-    return isHit;
-  }
 };
 class YZRect : public AaRect {
 public:
   double y0, y1, z0, z1;
-  const char *objtype = "yzrect";
 
 public:
   YZRect() {}
@@ -165,10 +121,6 @@ public:
          shared_ptr<Material> mat)
       : AaRect(_y0, _y1, _z0, _z1, _k, mat, vec3(1, 0, 0)), y0(_y0), y1(_y1),
         z0(_z0), z1(_z1) {}
-  bool hit(const Ray &r, double t0, double t1, HitRecord &rec) const override {
-    bool isHit = AaRect::hit(r, t0, t1, rec);
-    return isHit;
-  }
 };
 
 #endif
