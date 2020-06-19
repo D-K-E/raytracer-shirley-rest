@@ -18,7 +18,7 @@ public:
   CosinePdf(const vec3 &w) { uvw.build_from_w(w); }
 
   double value(const vec3 &direction) const override {
-    auto cosine = dot(unit_vector(direction), uvw.w());
+    auto cosine = dot(to_unit(direction), uvw.w());
     return (cosine <= 0) ? 0 : cosine / PI;
   }
 
@@ -29,6 +29,7 @@ public:
 public:
   Onb uvw;
 };
+/*
 class HittablePdf : public Pdf {
 public:
   HittablePdf(shared_ptr<Hittable> p, const point3 &origin)
@@ -66,4 +67,5 @@ public:
 public:
   shared_ptr<Pdf> p[2];
 };
+*/
 #endif
