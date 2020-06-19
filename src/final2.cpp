@@ -32,34 +32,31 @@ color ray_color(const Ray &r, const color &background,
     return background;
   }
   // recursive case
-  Ray r_out;
-  color atten;
   color emittedColor =
       record.mat_ptr->emitted(r, record, record.u, record.v, record.point);
-  double pdf_val;
-  if (!record.mat_ptr->scatter(r, record, atten, pdf_val, r_out)) {
+  ScatterRecord srec;
+  if (!record.mat_ptr->scatter(r, record, srec)) {
     return emittedColor;
   }
 
   // trying mixed pdf
-  shared_ptr<Pdf> cpdf = make_shared<CosinePdf>(record.normal);
 
   shared_ptr<Hittable> light_shape =
       make_shared<XZRect>(213, 343, 227, 332, 554, shared_ptr<Material>());
   shared_ptr<Pdf> hpdf = make_shared<HittablePdf>(light_shape, record.point);
 
-  MixturePdf pdf(hpdf, cpdf);
+  MixturePdf pdf(hpdf, srec.pdf_ptr);
 
   vec3 generated_dir = pdf.generate();
-  r_out = Ray(record.point, generated_dir, r.time());
-  pdf_val = pdf.value(r_out.dir());
+  Ray r_out = Ray(record.point, generated_dir, r.time());
+  double pdf_val = pdf.value(r_out.dir());
   double s_pdf = record.mat_ptr->scattering_pdf(r, record, r_out);
 
   // bidirectional surface scattering distribution function
   // rendering equation = L^e + L^r
   return emittedColor +
-         (atten * s_pdf * ray_color(r_out, background, scene, depth - 1) /
-          pdf_val);
+         (srec.attenuation * s_pdf *
+          ray_color(r_out, background, scene, depth - 1) / pdf_val);
 }
 
 HittableList cornell_box() {

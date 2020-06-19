@@ -1,19 +1,28 @@
 #ifndef MATERIAL_HPP
 #define MATERIAL_HPP
 //
+#include "constants.hpp"
 #include "vec3.hpp"
 #include <commons.hpp>
 //
 #include <hittable.hpp>
 #include <onb.hpp>
+#include <pdf.hpp>
 //
 #include <texture.hpp>
 //
+
+struct ScatterRecord {
+  Ray r_out;
+  bool is_specular;
+  color attenuation;
+  shared_ptr<Pdf> pdf_ptr;
+};
 class Material {
 public:
   const char *mtype = "Material";
   virtual bool scatter(const Ray &ray_in, const HitRecord &record,
-                       color &attenuation, double &pdf, Ray &ray_out) const {
+                       ScatterRecord &srec) const {
     return false;
   };
   virtual color emitted(const Ray &r_in, const HitRecord &rec, double u,
@@ -37,10 +46,12 @@ public:
 
 public:
   Lambertian(shared_ptr<Texture> a) : albedo(a){};
-  bool scatter(const Ray &ray_in, const HitRecord &record, color &attenuation,
-               double &pdf, Ray &ray_out) const override {
+  bool scatter(const Ray &ray_in, const HitRecord &record,
+               ScatterRecord &srec) const override {
     // isik kirilsin mi kirilmasin mi
-    attenuation = albedo->value(record.u, record.v, record.point);
+    srec.is_specular = false;
+    srec.attenuation = albedo->value(record.u, record.v, record.point);
+    srec.pdf_ptr = make_shared<CosinePdf>(record.normal);
     // pdf = 0.5 / PI; // for mat surfaces this should be fine
     return true;
   }
