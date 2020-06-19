@@ -21,7 +21,8 @@
 color dc = color(0);
 
 color ray_color(const Ray &r, const color &background,
-                const HittableList &scene, int depth) {
+                const HittableList &scene, shared_ptr<Hittable> lights,
+                int depth) {
   // carpan isini renklendirir
   HitRecord record;
   if (depth <= 0) {
@@ -40,14 +41,12 @@ color ray_color(const Ray &r, const color &background,
   }
   if (srec.is_specular) {
     return srec.attenuation *
-           ray_color(srec.r_out, background, scene, depth - 1);
+           ray_color(srec.r_out, background, scene, lights, depth - 1);
   }
 
   // trying mixed pdf
 
-  shared_ptr<Hittable> light_shape =
-      make_shared<XZRect>(213, 343, 227, 332, 554, shared_ptr<Material>());
-  shared_ptr<Pdf> hpdf = make_shared<HittablePdf>(light_shape, record.point);
+  shared_ptr<Pdf> hpdf = make_shared<HittablePdf>(lights, record.point);
 
   MixturePdf pdf(hpdf, srec.pdf_ptr);
 
@@ -60,7 +59,7 @@ color ray_color(const Ray &r, const color &background,
   // rendering equation = L^e + L^r
   return emittedColor +
          (srec.attenuation * s_pdf *
-          ray_color(r_out, background, scene, depth - 1) / pdf_val);
+          ray_color(r_out, background, scene, lights, depth - 1) / pdf_val);
 }
 
 HittableList cornell_box() {
@@ -130,12 +129,17 @@ void innerLoop(InnerParams params) {
   HittableList scene = params.scene;
   color background(0);
   //
+  shared_ptr<Hittable> light_shape =
+      make_shared<XZRect>(213, 343, 227, 332, 554, shared_ptr<Material>());
+  shared_ptr<Hittable> glass_sphere =
+      make_shared<Sphere>(point3(190, 90, 190), 90, shared_ptr<Material>());
+
   color rcolor(0.0, 0.0, 0.0);
   for (int k = 0; k < psample; k++) {
     double t = double(i + random_double()) / (imwidth - 1);
     double s = double(j + random_double()) / (imheight - 1);
     Ray r = camera.get_ray(t, s);
-    rcolor += ray_color(r, background, scene, mdepth);
+    rcolor += ray_color(r, background, scene, glass_sphere, mdepth);
   }
   write_color(std::cout, rcolor, psample);
 }

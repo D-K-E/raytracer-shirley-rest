@@ -3,6 +3,7 @@
 #define SPHERE_HPP
 
 //
+#include "vec3.hpp"
 #include <commons.hpp> // vek3, ray
 //
 #include <hittable.hpp>
@@ -75,6 +76,23 @@ public:
     //
     output_bbox = Aabb(center - vec3(radius), center + vec3(radius));
     return true;
+  }
+  double pdf_value(const point3 &o, const vec3 &v) const {
+    HitRecord rec;
+    if (!this->hit(Ray(o, v), 0.001, INF, rec))
+      return 0;
+
+    auto cos_theta_max = sqrt(1 - radius * radius / length_squared(center - o));
+    auto solid_angle = 2 * PI * (1 - cos_theta_max);
+
+    return 1 / solid_angle;
+  }
+  vec3 random(const point3 &o) const {
+    vec3 direction = center - o;
+    auto distance_squared = length_squared(direction);
+    Onb uvw;
+    uvw.build_from_w(direction);
+    return uvw.local(random_to_sphere(radius, distance_squared));
   }
 };
 
