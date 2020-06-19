@@ -1,5 +1,6 @@
 #ifndef AARECT_HPP
 #define AARECT_HPP
+#include "vec3.hpp"
 #include <aabb.hpp>
 #include <commons.hpp>
 #include <hittable.hpp>
@@ -110,6 +111,22 @@ public:
          shared_ptr<Material> mat)
       : AaRect(_x0, _x1, _z0, _z1, _k, mat, vec3(0, 1, 0)), x0(_x0), x1(_x1),
         z0(_z0), z1(_z1) {}
+  virtual double pdf_value(const point3 &origin, const vec3 &v) const override {
+    HitRecord rec;
+    if (!this->hit(Ray(origin, v), 0.001, INF, rec))
+      return 0;
+
+    auto area = (x1 - x0) * (z1 - z0);
+    auto distance_squared = rec.dist * rec.dist * length_squared(v);
+    auto cosine = fabs(dot(v, rec.normal) / length(v));
+
+    return distance_squared / (cosine * area);
+  }
+
+  virtual vec3 random(const point3 &origin) const override {
+    auto random_point = point3(random_double(x0, x1), k, random_double(z0, z1));
+    return random_point - origin;
+  }
 };
 class YZRect : public AaRect {
 public:

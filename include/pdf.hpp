@@ -29,7 +29,6 @@ public:
 public:
   Onb uvw;
 };
-/*
 class HittablePdf : public Pdf {
 public:
   HittablePdf(shared_ptr<Hittable> p, const point3 &origin)
@@ -46,6 +45,7 @@ public:
   shared_ptr<Hittable> ptr;
 };
 
+/*
 class MixturePdf : public Pdf {
 public:
   MixturePdf(shared_ptr<Pdf> p0, shared_ptr<Pdf> p1) {

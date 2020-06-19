@@ -41,8 +41,13 @@ color ray_color(const Ray &r, const color &background,
     return emittedColor;
   }
 
+  // trying hittable pdf
+
+  shared_ptr<Hittable> light_shape =
+      make_shared<XZRect>(213, 343, 227, 332, 554, shared_ptr<Material>());
+  HittablePdf pdf(light_shape, record.point);
+
   // trying to cosine pdf
-  CosinePdf pdf(record.normal);
   vec3 generated_dir = pdf.generate();
   r_out = Ray(record.point, generated_dir, r.time());
   pdf_val = pdf.value(generated_dir);
