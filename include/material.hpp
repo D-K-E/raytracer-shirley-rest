@@ -5,6 +5,7 @@
 #include <commons.hpp>
 //
 #include <hittable.hpp>
+#include <onb.hpp>
 //
 #include <texture.hpp>
 //
@@ -38,10 +39,13 @@ public:
   bool scatter(const Ray &ray_in, const HitRecord &record, color &attenuation,
                double &pdf, Ray &ray_out) const override {
     // isik kirilsin mi kirilmasin mi
-    vec3 out_dir = random_in_hemisphere(record.normal);
+    Onb uvw;
+    uvw.build_from_w(record.normal);
+    vec3 out_dir = uvw.local(random_cosine_direction());
     ray_out = Ray(record.point, to_unit(out_dir), ray_in.time());
     attenuation = albedo->value(record.u, record.v, record.point);
-    pdf = 0.5 / PI;
+    // pdf = 0.5 / PI; // for mat surfaces this should be fine
+    pdf = dot(uvw.w(), ray_out.dir()) / PI;
     return true;
   }
   double scattering_pdf(const Ray &ray_in, const HitRecord &record,
