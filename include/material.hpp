@@ -16,7 +16,8 @@ public:
                        color &attenuation, double &pdf, Ray &ray_out) const {
     return false;
   };
-  virtual color emitted(double u, double v, const point3 &p) const {
+  virtual color emitted(const Ray &r_in, const HitRecord &rec, double u,
+                        double v, const point3 &p) const {
     return color(0);
   }
   virtual double scattering_pdf(const Ray &ray_in, const HitRecord &record,
@@ -161,10 +162,12 @@ public:
     // std::cerr << "scatter color: " << std::endl;
     return false;
   }
-  virtual color emitted(double u, double v, const point3 &p) const {
-    //
-    color emitColor = emit->value(u, v, p);
-    return emitColor;
+  color emitted(const Ray &r_in, const HitRecord &rec, double u, double v,
+                const point3 &p) const override {
+    if (rec.front_face) {
+      color emitColor = emit->value(u, v, p);
+    }
+    return color(0);
   }
 };
 
