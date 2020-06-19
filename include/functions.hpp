@@ -14,15 +14,16 @@ inline double degree_to_radian(double degree) {
 
 //
 //
+inline double random_double() {
+  static std::uniform_real_distribution<double> distr(0, 1);
+  static thread_local std::mt19937 gen;
+  return distr(gen);
+}
 inline double random_double(double min, double max) {
   // random double number in range [min, max]
-  static std::uniform_real_distribution<double> distr(min, max);
-  static thread_local std::mt19937 gen;
-  static std::function<double()> rand_gen = std::bind(distr, gen);
-  return rand_gen();
+  return min + (max - min) * random_double();
 }
 
-inline double random_double() { return random_double(0, 1); }
 inline int random_int() {
   // from so: https://stackoverflow.com/a/21238187
   return static_cast<int>(random_double());
