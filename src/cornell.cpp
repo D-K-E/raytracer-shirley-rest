@@ -66,21 +66,9 @@ HittableList cornell_box() {
   scene.add(make_shared<XZRect>(0, 555, 0, 555, 555, white));
   scene.add(
       make_shared<FlipFace>(make_shared<XYRect>(0, 555, 0, 555, 555, white)));
-
-  // --------- make boxes --------------
-  shared_ptr<Hittable> box1 =
-      make_shared<Box>(point3(0, 0, 0), point3(165, 330, 165), white);
-  box1 = make_shared<RotateY>(box1, 15);
-  box1 = make_shared<Translate>(box1, vec3(265, 0, 295));
-  scene.add(box1);
-
-  shared_ptr<Hittable> box2 =
-      make_shared<Box>(point3(0, 0, 0), point3(165, 165, 165), white);
-  box2 = make_shared<RotateY>(box2, -18);
-  box2 = make_shared<Translate>(box2, vec3(130, 0, 65));
-  scene.add(box2);
-
-  // add other objects etc
+  scene.add(make_shared<Box>(point3(130, 0, 65), point3(295, 165, 230), white));
+  scene.add(
+      make_shared<Box>(point3(265, 0, 295), point3(430, 330, 460), white));
 
   return scene;
 }
