@@ -39,12 +39,31 @@ color ray_color(const Ray &r, const color &background,
   if (!record.mat_ptr->scatter(r, record, atten, pdf_val, r_out)) {
     return emittedColor;
   }
+
+  // light sampling
+
+  auto on_light = point3(random_double(213, 343), 554, random_double(227, 332));
+  auto to_light = on_light - record.point;
+  auto distance_squared = length_squared(to_light);
+  to_light = unit_vector(to_light);
+
+  if (dot(to_light, record.normal) < 0)
+    return emittedColor;
+
+  double light_area = (343 - 213) * (332 - 227);
+  auto light_cosine = fabs(to_light.y);
+  if (light_cosine < 0.000001)
+    return emittedColor;
+
+  pdf_val = distance_squared / (light_cosine * light_area);
+  r_out = Ray(record.point, to_light, r.time());
   double s_pdf = record.mat_ptr->scattering_pdf(r, record, r_out);
+
   // bidirectional surface scattering distribution function
   // rendering equation = L^e + L^r
   return emittedColor +
-         (atten * ray_color(r_out, background, scene, depth - 1) *
-          (s_pdf / pdf_val));
+         (atten * s_pdf * ray_color(r_out, background, scene, depth - 1) /
+          pdf_val);
 }
 
 HittableList cornell_box() {
