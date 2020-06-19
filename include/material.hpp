@@ -165,7 +165,7 @@ public:
   color emitted(const Ray &r_in, const HitRecord &rec, double u, double v,
                 const point3 &p) const override {
     if (rec.front_face) {
-      color emitColor = emit->value(u, v, p);
+      return emit->value(u, v, p);
     }
     return color(0);
   }
